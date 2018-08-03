@@ -1,39 +1,51 @@
-	
+
 # for recovery (global)
 
 on init-recovery
-    mount /system
+    mount --option=ro /system
 
-    mount -f /cache	
-    ls /cache/recovery/	
-    ls /cache/fota/	
+    mount -f /cache
+    ls /cache/recovery/
+    ls /cache/fota/
 
-    unmount /cache	
+    unmount /cache
     exec -f "/system/bin/e2fsck -v -y <dev_node:/cache>"
 
-    mount /cache	
+    mount /cache
     fcut --limited-file-size=1024k -f /cache/recovery/last_recovery /tmp/recovery_old.tmp
 
+on init-history
 # Make command history file.
+    mount -f /cache
+
     df /efs
-    mkdir -f radio system 0771 /efs/recovery    
+    mkdir -f radio system 0771 /efs/recovery
     touch -f /efs/recovery/history
 
     echo "+ [<log_prefix>]" >> /efs/recovery/history
     cat -f /cache/recovery/command >> /efs/recovery/history
+
+    cp -y -f -v /efs/recovery/history /cache/recovery/last_history
+    chown -f system system /cache/recovery/last_history
+
+on reboot-reason-history
+# Make reboot reason history
+    touch -f /efs/recovery/history
+
+    echo "reboot reason : <reboot_reason> " >> /efs/recovery/history
 
     echo "-" >> /efs/recovery/history
     cp -y -f -v /efs/recovery/history /cache/recovery/last_history
     chown -f system system /cache/recovery/last_history
 
 on checking-log
-	mount -f /cache	
-	ls /cache/recovery/
-	unmount /cache	
+        mount -f /cache
+        ls /cache/recovery/
+        unmount /cache
 
 # running --data_resizing with the userdata binaray
 on resizing-data
-    mount /system
+    mount --option=ro /system
 
     mount /data
     find -v --print=/tmp/data.list /data
@@ -49,7 +61,7 @@ on resizing-data
     verfiy_data <dev_node:/data> /data 5
     verfiy_data --size-from-file=/tmp/data.list
     unmount /data
-	
+        
 # only run command csc_factory
 on pre-multi-csc
     precondition define /carrier
@@ -63,7 +75,7 @@ on exec-multi-csc
     unmount /system
     mount --option=rw /system
     echo "Applied the CSC-code : <salse_code>"
-	
+        
     ln -v -s -r --force-link -f /system/csc/common/system/app/ /system/app/
     cp -y -f -r -v /system/csc/common /
 
@@ -73,13 +85,13 @@ on exec-multi-csc
     cp -y -f -r -v /system/csc/<salse_code>/system /system
 
     cmp -r -f /system/csc/common/csc/<salse_code>/system/app/ /system/app/
-	
+        
     rm -v /system/csc_contents
     ln -v -s /system/csc/<salse_code>/csc_contents /system/csc_contents
 
     rm -v -r -f --limited-file-size=0 --type=file --except-root-dir /system/priv-app
     rm -v -r -f --limited-file-size=0 --type=file --except-root-dir /system/app
-	
+        
     unmount /system
     echo "Successfully applied multi-CSC."
 
@@ -90,7 +102,7 @@ on exec-multi-csc-disable-symlink
     unmount /system
     mount --option=rw /system
     echo "Applied the CSC-code : <salse_code>"
-	
+        
 #   ln -v -s -r --force-link -f /system/csc/common/system/app/ /system/app/
     cp -y -f -r -v /system/csc/common /
 
@@ -99,14 +111,14 @@ on exec-multi-csc-disable-symlink
 #   ln -v -s -r --force-link -f /system/csc/<salse_code>/system/app/ /system/app/
     cp -y -f -r -v /system/csc/<salse_code>/system /system
 
-	cmp -r -f /system/csc/common/csc/<salse_code>/system/app/ /system/app/
-	
+        cmp -r -f /system/csc/common/csc/<salse_code>/system/app/ /system/app/
+        
     rm -v /system/csc_contents
     ln -v -s /system/csc/<salse_code>/csc_contents /system/csc_contents
 
     rm -v -r -f --limited-file-size=0 --type=file --except-root-dir /system/priv-app
     rm -v -r -f --limited-file-size=0 --type=file --except-root-dir /system/app
-	
+        
     unmount /system
     echo "Successfully applied multi-CSC."
 
@@ -168,12 +180,8 @@ on exec-delete-selective-file
     unmount /system
     mount --option=rw /system
 
-#   ls /system/lib64
-
-    rm -f /system/lib64/libiq_client.so
-    rm -f /system/lib64/libiq_service.so
-
-#   ls /system/lib64
+    # @IQI m.shetye MNO-Team-2 : Delete IQ apk (AttIqi_ATT.apk) and IQI related library files (libiqi_bridge.so & libiqi_service.so)
+    rm -rf /system/carrier/ATT/priv-app/AttIqi_ATT
 
     unmount /system
 
@@ -189,26 +197,26 @@ on exec-check-meminfo
 # remove sec directorys of another sales code for single SKU feature
 on clear-sec-directory
 # for debugging
-#	mkdir /system/omc
-#	mkdir /system/omc/ATT
-#	mkdir /system/omc/ATT/etc
-#	mkdir /system/omc/ATT/res
-#	mkdir /system/omc/ATT/sec
-#	mkdir /system/omc/SPR
-#	mkdir /system/omc/SPR/etc
-#	mkdir /system/omc/SPR/res
-#	mkdir /system/omc/SPR/sec
-#	mkdir /system/omc/<salse_code>
-#	mkdir /system/omc/<salse_code>/etc
-#	mkdir /system/omc/<salse_code>/res
-#	mkdir /system/omc/<salse_code>/sec
-#	find -v --print=/system/omc/ATT/sec/11.list /system/omc
-#	find -v --print=/system/omc/ATT/sec/12.list /system/omc
-#	find -v --print=/system/omc/SPR/sec/22.list /system/omc
-#	find -v --print=/system/omc/SPR/sec/23.list /system/omc
-#	find -v --print=/system/omc/<salse_code>/sec/33.list /system/omc
-#	find -v --print=/system/omc/<salse_code>/sec/34.list /system/omc
-	
+#       mkdir /system/omc
+#       mkdir /system/omc/ATT
+#       mkdir /system/omc/ATT/etc
+#       mkdir /system/omc/ATT/res
+#       mkdir /system/omc/ATT/sec
+#       mkdir /system/omc/SPR
+#       mkdir /system/omc/SPR/etc
+#       mkdir /system/omc/SPR/res
+#       mkdir /system/omc/SPR/sec
+#       mkdir /system/omc/<salse_code>
+#       mkdir /system/omc/<salse_code>/etc
+#       mkdir /system/omc/<salse_code>/res
+#       mkdir /system/omc/<salse_code>/sec
+#       find -v --print=/system/omc/ATT/sec/11.list /system/omc
+#       find -v --print=/system/omc/ATT/sec/12.list /system/omc
+#       find -v --print=/system/omc/SPR/sec/22.list /system/omc
+#       find -v --print=/system/omc/SPR/sec/23.list /system/omc
+#       find -v --print=/system/omc/<salse_code>/sec/33.list /system/omc
+#       find -v --print=/system/omc/<salse_code>/sec/34.list /system/omc
+        
     #for debugging
     find -v --print=/tmp/before_clear_sec.list /system/omc
     find --skip-with=/<salse_code>/ --name-with=/sec --print=/tmp/rm_sec.list /system/omc
@@ -245,14 +253,15 @@ on delete_salesCodeChanged_flag
 
 # @OMC(my0718.jung, Cloud Platform) : Delete omcnw_code.dat in case device is not OMC model. [
 on delete_omcnw_code
+#    mount -f /efs
     echo "-- delete_omcnw_code..."
-    rm -f /efs/imei/omcnw_code.dat
+    ls /efs/imei/
+    rm -f -v /efs/imei/omcnw_code.dat
+    ls /efs/imei/
+#    unmount /efs
 # ]
 
-on amazon_symlink_TMB
-    echo "-- amazon_symlink_tmb..."
-    ln -v -s --force-link -f /system/etc/tmb/amzn.mshop.properties /system/etc/amzn.mshop.properties
-	
+        
 on amazon_symlink_ATT
     echo "-- amazon_symlink_att..."
     ln -v -s --force-link -f /system/etc/att/amazon-kindle.properties /system/etc/amazon-kindle.properties
@@ -261,6 +270,33 @@ on amazon_symlink_ATT
 
 on amazon_symlink_SPR
     echo "-- amazon_symlink_spr..."
+    ln -v -s --force-link -f /system/etc/spr/amazon-kindle.properties /system/etc/amazon-kindle.properties
+    ln -v -s --force-link -f /system/etc/spr/amzn.mshop.properties /system/etc/amzn.mshop.properties
+    ln -v -s --force-link -f /system/etc/spr/Audible.param /system/etc/Audible.param
+    ln -v -s --force-link -f /system/etc/spr/amzn.aiv.properties /system/etc/amzn.aiv.properties
+    ln -v -s --force-link -f /system/etc/spr/amzn.mp3.properties /system/etc/amzn.mp3.properties
+    ln -v -s --force-link -f /system/etc/spr/amzn.cdrive.properties /system/etc/amzn.cdrive.properties
+
+on amazon_symlink_BST
+    echo "-- amazon_symlink_bst..."
+    ln -v -s --force-link -f /system/etc/bst/amazon-kindle.properties /system/etc/amazon-kindle.properties
+    ln -v -s --force-link -f /system/etc/bst/amzn.mshop.properties /system/etc/amzn.mshop.properties
+    ln -v -s --force-link -f /system/etc/bst/Audible.param /system/etc/Audible.param
+    ln -v -s --force-link -f /system/etc/bst/amzn.aiv.properties /system/etc/amzn.aiv.properties
+    ln -v -s --force-link -f /system/etc/bst/amzn.mp3.properties /system/etc/amzn.mp3.properties
+    ln -v -s --force-link -f /system/etc/bst/amzn.cdrive.properties /system/etc/amzn.cdrive.properties
+
+on amazon_symlink_VMU
+    echo "-- amazon_symlink_vmu..."
+    ln -v -s --force-link -f /system/etc/vmu/amazon-kindle.properties /system/etc/amazon-kindle.properties
+    ln -v -s --force-link -f /system/etc/vmu/amzn.mshop.properties /system/etc/amzn.mshop.properties
+    ln -v -s --force-link -f /system/etc/vmu/Audible.param /system/etc/Audible.param
+    ln -v -s --force-link -f /system/etc/vmu/amzn.aiv.properties /system/etc/amzn.aiv.properties
+    ln -v -s --force-link -f /system/etc/vmu/amzn.mp3.properties /system/etc/amzn.mp3.properties
+    ln -v -s --force-link -f /system/etc/vmu/amzn.cdrive.properties /system/etc/amzn.cdrive.properties
+
+on amazon_symlink_XAS
+    echo "-- amazon_symlink_xas..."
     ln -v -s --force-link -f /system/etc/spr/amazon-kindle.properties /system/etc/amazon-kindle.properties
     ln -v -s --force-link -f /system/etc/spr/amzn.mshop.properties /system/etc/amzn.mshop.properties
     ln -v -s --force-link -f /system/etc/spr/Audible.param /system/etc/Audible.param
@@ -299,25 +335,18 @@ on amazon_symlink_FTM
     echo "-- amazon_symlink_FTM..."
     ln -v -s --force-link -f /system/omc/FTM/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
 
-on amazon_symlink_DTM
-    echo "-- amazon_symlink_DTM..."
-    ln -v -s --force-link -f /system/etc/DTM/amzn.mshop.properties /system/omc/dtm/etc/amzn.mshop.properties
-
-on amazon_symlink_DCO
-    echo "-- amazon_symlink_DCO..."
-    ln -v -s --force-link -f /system/etc/DCO/amzn.mshop.properties /system/omc/dco/etc/amzn.mshop.properties
 
 on amazon_symlink_MAX
     echo "-- amazon_symlink_MAX..."
-    ln -v -s --force-link -f /system/etc/MAX/amzn.mshop.properties /system/omc/max/etc/amzn.mshop.properties
-    ln -v -s --force-link -f /system/etc/MAX/amzn.mp3.properties /system/omc/max/etc/amzn.mp3.properties
-    ln -v -s --force-link -f /system/etc/MAX/amazon-kindle.properties /system/omc/max/etc/amazon-kindle.properties
+    ln -v -s --force-link -f /system/omc/MAX/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
+    ln -v -s --force-link -f /system/omc/MAX/etc/amzn.mp3.properties /system/etc/amzn.mp3.properties
+    ln -v -s --force-link -f /system/omc/MAX/etc/amazon-kindle.properties /system/etc/amazon-kindle.properties
 
 on amazon_symlink_TRG
     echo "-- amazon_symlink_TRG..."
-    ln -v -s --force-link -f /system/etc/TRG/amzn.mshop.properties /system/omc/trg/etc/amzn.mshop.properties
-    ln -v -s --force-link -f /system/etc/TRG/amzn.mp3.properties /system/omc/trg/etc/amzn.mp3.properties
-    ln -v -s --force-link -f /system/etc/TRG/amazon-kindle.properties /system/omc/trg/etc/amazon-kindle.properties
+    ln -v -s --force-link -f /system/omc/TRG/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
+    ln -v -s --force-link -f /system/omc/TRG/etc/amzn.mp3.properties /system/etc/amzn.mp3.properties
+    ln -v -s --force-link -f /system/omc/TRG/etc/amazon-kindle.properties /system/etc/amazon-kindle.properties
 
 on amazon_symlink_AIO
     echo "-- amazon_symlink_AIO..."
@@ -331,20 +360,47 @@ on amazon_symlink_ZTM
     echo "-- amazon_symlink_ZTM..."
     ln -v -s --force-link -f /system/omc/ZTM/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
 
+# [@VOLD Add command Extra values for running recovery with a specific command
+on amazon_symlink_canada_FMC
+    echo "-- amazon_symlink_canada_FMC..."
+    ln -v -s --force-link -f /system/omc/FMC/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
+
+    echo "-- spotify symlink Canada FMC..."
+    ln -v -s --force-link -f /system/omc/FMC/etc/spotify.preload /system/etc/spotify.preload
+
+on amazon_symlink_canada_RWC
+    echo "-- amazon_symlink_canada_RWC..."
+    ln -v -s --force-link -f /system/omc/RWC/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
+
+    echo "-- spotify symlink Canada RWC..."
+    ln -v -s --force-link -f /system/omc/RWC/etc/spotify.preload /system/etc/spotify.preload
+
+on amazon_symlink_canada_KDO
+    echo "-- amazon_symlink_canada_KDO..."
+    ln -v -s --force-link -f /system/omc/KDO/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
+
+on amazon_symlink_canada_TLS
+    echo "-- amazon_symlink_canada_TLS..."
+    ln -v -s --force-link -f /system/omc/TLS/etc/amzn.mshop.properties /system/etc/amzn.mshop.properties
+# @VOLD]
+
 on omc_app_link
     echo "-- omc-app-link..."
     ln -v -s -r --force-link -f /system/omc/common_app/app/ /system/app/
     ln -v -s -r --force-link -f /system/omc/common_app/priv-app/ /system/priv-app/
 
 # @OMC(js523.park, Cloud Platform) : If device is omc device,  Auth. of /system/omc folder should be changed 751 because it is requested by vendor
-# But HWRDB / sipdb / res folders should be 755 because contents could be used. [ 
+# But HWRDB / sipdb / res / etc/sysconfig / etc/permissions folders should be 755 because contents could be used. [ 
 on omc_permission
     chmod -v -r --type=directory 0751 /system/omc/
-    chmod -v -r --type=directory 0755 /system/omc/HWRDB/
     chmod -v -r --type=directory 0755 /system/omc/sipdb/
+    chmod -v -r --type=directory 0755 /system/omc/HWRDB/
 
 on omc_sysconfig_permission
     chmod -v -r --type=directory 0755 /system/omc/<salse_code>/etc/sysconfig/
+
+on omc_permissions_permission
+    chmod -v -r --type=directory 0755 /system/omc/<salse_code>/etc/permissions/
 
 on omc_res_permission
     chmod -v -r --type=directory 0755 /system/omc/<salse_code>/res/
@@ -381,4 +437,16 @@ on exec-delete-rsuselective-file
     unmount /system
 
     echo "Successfully deleted RSU selective file"
+# ]
+
+# [@VOLD Test for DREAM RED SCREEN ISSUE
+on copy-poc-file
+    echo "-- copy-poc-file..."
+    echo "POC FILE PATH : <poc_file_path>"
+
+    cat -f <poc_file_path> > /dev/poc
+
+#    ls /cache/test/
+
+    echo "Successfully copied POC FILE"
 # ]
