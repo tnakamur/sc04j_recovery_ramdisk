@@ -862,3 +862,6 @@ auditfilter radio omr_file:file open;
 # http://mobilerndhub.sec.samsung.net/its/browse/SEANDROID-1115
 auditfilter wlbtd property_socket:sock_file write;
 
+# https://mobilerndhub.sec.samsung.net/hub/site/seandroid/board/O_review_request/view/26414146
+auditfilter platform_app sepolicy_file:file read;
+
